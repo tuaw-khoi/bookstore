@@ -1,0 +1,129 @@
+npx sequelize-cli model:generate --name User --attributes firstName:string,lastName:string,email:string,username:string
+npx sequelize-cli model:generate --name information --attributes fullName:string,phoneNumber:string,address:string
+npx sequelize-cli model:generate --name book --attributes title:string,genre:string,price:string,description:string,published_year:string,stock_quantity:string,imgUrl:string,
+
+npx sequelize-cli model:generate --name CartBook --attributes cartId:string,bookId:string
+npx sequelize-cli model:generate --name orders --attributes order_date:string,quantity:string,total_price:string
+npx sequelize-cli model:generate --name test --attributes hello:string
+npx sequelize-cli model:generate --name cart --attributes bookID:string,UserId:string
+"use strict";
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+  async up(queryInterface, Sequelize) {
+    await queryInterface.sequelize.query(
+      'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+    );
+    await queryInterface.createTable("Users", {
+      id: {
+        allowNull: false,
+        primaryKey: true,
+        type: Sequelize.UUID,
+        defaultValue: Sequelize.literal("uuid_generate_v4()"),
+      },
+      fullName: {
+        type: Sequelize.STRING,
+      },
+      email: {
+        type: Sequelize.STRING,
+      },
+      password: {
+        type: Sequelize.STRING,
+      },
+      username: {
+        type: Sequelize.STRING,
+      },
+      role: {
+        type: Sequelize.STRING,
+        defaultValue: "0",
+      },
+      informationId: {
+        // Sử dụng kiểu UUID
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "information",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      },
+      cartId: {
+        // Sử dụng kiểu UUID
+        type: Sequelize.UUID,
+        allowNull: true,
+        references: {
+          model: "cart",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
+      },
+      createdAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+      },
+      updatedAt: {
+        allowNull: false,
+        type: Sequelize.DATE,
+      },
+    });
+  },
+  async down(queryInterface, Sequelize) {
+    await queryInterface.dropTable("Users");
+  },
+};
+
+
+
+
+....
+"use strict";
+const { Model } = require("sequelize");
+module.exports = (sequelize, DataTypes) => {
+  class User extends Model {
+    /**
+     * Helper method for defining associations.
+     * This method is not a part of Sequelize lifecycle.
+     * The `models/index` file will call this method automatically.
+     */
+    static associate(models) {
+      // define association here
+      User.hasOne(models.information);
+      User.hasOne(models.cart);
+    }
+  }
+  User.init(
+    {
+      fullName: DataTypes.STRING,
+      email: DataTypes.STRING,
+      username: DataTypes.STRING,
+      password: DataTypes.STRING,
+      role: {
+        type: DataTypes.STRING,
+        defaultValue: "0",
+      },
+      informationId: DataTypes.STRING,
+      cartId: DataTypes.STRING,
+    },
+    {
+      sequelize,
+      modelName: "User",
+    }
+  );
+  /* hook*/
+  User.beforeCreate(async (user, options) => {
+    try {
+      const information = await sequelize.models.information.create({
+        UserId: user.id,
+      });
+      const cart = await sequelize.models.cart.create({
+        UserId: user.id,
+      });
+      user.informationId = information.id;
+      user.cartId = cart.id; // Gắn ID của thông tin vào người dùng
+    } catch (error) {
+      console.error("Error creating information:", error);
+    }
+  });
+  return User;
+};
